@@ -3,12 +3,13 @@ volumes:
   dados:
 networks:
   banco:
-  web:     
+  web:   
+  fila:  
 services:
   db:    
     image: postgres:9.6        
     environment:
-      POSTGRES_PASSWORD: 123456
+      - POSTGRES_PASSWORD=123456
     volumes:      
       # Volume dos dados
       - dados:/var/lib/postgresql/data
@@ -32,6 +33,8 @@ services:
     depends_on:
       - app   
   app:
+    environment:
+      - DB_NAME=email_sender      
     image: python:3.6
     volumes:
       # Aplicação    
@@ -40,6 +43,24 @@ services:
     command: bash ./app.sh
     networks:
       - banco
-      - web  
+      - web
+      - fila  
     depends_on:
-      - db  
+      - db 
+      - queue
+  queue:
+    image: redis:3.2
+    networks:
+      - fila
+  worker:
+    build: worker
+    volumes:
+      # Worker
+      - ./worker:/worker
+    working_dir: /worker
+    command: worker.py
+    networks:
+      - fila
+    depends_on:
+      - queue
+    
